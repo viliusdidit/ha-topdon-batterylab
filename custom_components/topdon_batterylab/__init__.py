@@ -1,4 +1,4 @@
-"""The TOPDON TB6000Pro integration."""
+"""The TOPDON BatteryLab integration."""
 
 from __future__ import annotations
 
@@ -7,29 +7,32 @@ from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 
-from .coordinator import TB6000Coordinator
+from .const import CONF_MODEL
+from .coordinator import TopdonCoordinator
+from .devices import DEVICES
 
 PLATFORMS: list[Platform] = [Platform.BINARY_SENSOR, Platform.SENSOR]
 
-type TB6000ConfigEntry = ConfigEntry[TB6000Coordinator]
+type TopdonConfigEntry = ConfigEntry[TopdonCoordinator]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: TB6000ConfigEntry) -> bool:
-    """Set up TB6000Pro from a config entry."""
+async def async_setup_entry(hass: HomeAssistant, entry: TopdonConfigEntry) -> bool:
+    """Set up a TOPDON device from a config entry."""
     address: str = entry.data[CONF_ADDRESS]
-    coordinator = TB6000Coordinator(hass, address)
+    model: str = entry.data[CONF_MODEL]
 
-    # The charger is only reachable when it is in range of an adapter or proxy;
-    # if the first poll fails HA will retry rather than leaving dead entities.
+    profile = DEVICES.get(model)
+    if profile is None:
+        raise ConfigEntryNotReady(f"unsupported model {model!r}")
+
+    coordinator = TopdonCoordinator(hass, address, profile)
     await coordinator.async_config_entry_first_refresh()
-    if coordinator.data is None:
-        raise ConfigEntryNotReady(f"no data from {address}")
 
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: TB6000ConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: TopdonConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

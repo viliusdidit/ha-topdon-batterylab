@@ -1,4 +1,4 @@
-"""Binary sensors for the TB6000Pro."""
+"""Binary sensors for TOPDON BatteryLab devices."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import TB6000ConfigEntry
-from .const import FLOAT_STEPS
-from .entity import TB6000Entity
+from . import TopdonConfigEntry
+from .devices import FLOAT_STEPS
+from .entity import TopdonEntity
 
 DESCRIPTION = BinarySensorEntityDescription(
     key="charging",
@@ -23,14 +23,16 @@ DESCRIPTION = BinarySensorEntityDescription(
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: TB6000ConfigEntry,
+    entry: TopdonConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the charging binary sensor."""
-    async_add_entities([TB6000Charging(entry.runtime_data, DESCRIPTION)])
+    coordinator = entry.runtime_data
+    if DESCRIPTION.key in coordinator.profile.supported_keys:
+        async_add_entities([TopdonCharging(coordinator, DESCRIPTION)])
 
 
-class TB6000Charging(TB6000Entity, BinarySensorEntity):
+class TopdonCharging(TopdonEntity, BinarySensorEntity):
     """True while a charge session is active."""
 
     def __init__(self, coordinator, description) -> None:
@@ -47,9 +49,9 @@ class TB6000Charging(TB6000Entity, BinarySensorEntity):
     def extra_state_attributes(self) -> dict[str, str | bool]:
         if (data := self.coordinator.data) is None:
             return {}
-        return {
-            # Steps 8/9 alternate during float; useful for distinguishing
-            # "still bulk charging" from "topped off and maintaining".
-            "maintaining": data.step in FLOAT_STEPS,
-            "raw_payload": data.raw,
-        }
+        attrs: dict[str, str | bool] = {"raw_payload": data.raw}
+        if data.step is not None:
+            # Steps 8/9 alternate during float; distinguishes "still bulk
+            # charging" from "topped off and maintaining".
+            attrs["maintaining"] = data.step in FLOAT_STEPS
+        return attrs

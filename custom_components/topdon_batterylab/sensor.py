@@ -1,4 +1,4 @@
-"""Sensors for the TB6000Pro."""
+"""Sensors for TOPDON BatteryLab devices."""
 
 from __future__ import annotations
 
@@ -15,21 +15,21 @@ from homeassistant.const import EntityCategory, UnitOfElectricPotential
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import TB6000ConfigEntry
-from .entity import TB6000Entity
-from .protocol import ChargerState
+from . import TopdonConfigEntry
+from .devices import DeviceState
+from .entity import TopdonEntity
 
 
 @dataclass(frozen=True, kw_only=True)
-class TB6000SensorDescription(SensorEntityDescription):
+class TopdonSensorDescription(SensorEntityDescription):
     """Sensor description with a value extractor."""
 
-    value_fn: Callable[[ChargerState], float | int | str | None]
+    value_fn: Callable[[DeviceState], float | int | None]
 
 
-SENSORS: tuple[TB6000SensorDescription, ...] = (
-    TB6000SensorDescription(
-        key="battery_voltage",
+SENSORS: tuple[TopdonSensorDescription, ...] = (
+    TopdonSensorDescription(
+        key="voltage",
         translation_key="battery_voltage",
         device_class=SensorDeviceClass.VOLTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -37,14 +37,14 @@ SENSORS: tuple[TB6000SensorDescription, ...] = (
         suggested_display_precision=2,
         value_fn=lambda s: s.voltage,
     ),
-    TB6000SensorDescription(
-        key="charge_step",
+    TopdonSensorDescription(
+        key="step",
         translation_key="charge_step",
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:stairs",
         value_fn=lambda s: s.step,
     ),
-    TB6000SensorDescription(
+    TopdonSensorDescription(
         key="mode",
         translation_key="mode",
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -56,25 +56,28 @@ SENSORS: tuple[TB6000SensorDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: TB6000ConfigEntry,
+    entry: TopdonConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up sensors."""
+    """Set up sensors the connected model actually supports."""
     coordinator = entry.runtime_data
-    async_add_entities(TB6000Sensor(coordinator, d) for d in SENSORS)
+    supported = coordinator.profile.supported_keys
+    async_add_entities(
+        TopdonSensor(coordinator, d) for d in SENSORS if d.key in supported
+    )
 
 
-class TB6000Sensor(TB6000Entity, SensorEntity):
+class TopdonSensor(TopdonEntity, SensorEntity):
     """A single decoded field."""
 
-    entity_description: TB6000SensorDescription
+    entity_description: TopdonSensorDescription
 
-    def __init__(self, coordinator, description: TB6000SensorDescription) -> None:
+    def __init__(self, coordinator, description: TopdonSensorDescription) -> None:
         super().__init__(coordinator, description.key)
         self.entity_description = description
 
     @property
-    def native_value(self) -> float | int | str | None:
+    def native_value(self) -> float | int | None:
         if (data := self.coordinator.data) is None:
             return None
         return self.entity_description.value_fn(data)
