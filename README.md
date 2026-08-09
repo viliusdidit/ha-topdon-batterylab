@@ -103,3 +103,11 @@ hardware.
 ## License
 
 MIT
+
+## Trademark
+
+TOPDON and the TOPDON wordmark are trademarks of TOPDON TECHNOLOGY Co., Ltd.
+This is an unofficial, community-built integration and is not affiliated with,
+endorsed by, or supported by TOPDON. The logo in `brand/` is included solely to
+identify which devices the integration works with. Source asset:
+<https://www.topdon.com/>.
