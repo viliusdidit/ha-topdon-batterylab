@@ -1,0 +1,12 @@
+{
+  "entity": {
+    "sensor": {
+      "charge_step": {
+        "default": "mdi:stairs"
+      },
+      "mode": {
+        "default": "mdi:tune"
+      }
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "TOPDON BatteryLab",
+        "description": "Select the device to add. It must be powered and in range of a Bluetooth adapter or proxy.",
+        "data": {
+          "address": "Device"
+        }
+      },
+      "confirm": {
+        "title": "TOPDON BatteryLab",
+        "description": "Add the {model} at {address}?"
+      }
+    },
+    "abort": {
+      "already_configured": "This device is already configured.",
+      "not_supported": "This device is not supported by the integration.",
+      "no_devices_found": "No supported TOPDON device found. It must be powered. If the TOPDON BatteryLab phone app has been used since the device was last powered up, it stops advertising to anything else - disconnect it from the battery for about 30 seconds, then reconnect."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "battery_voltage": {
+        "name": "Battery voltage"
+      },
+      "charge_step": {
+        "name": "Charge step"
+      },
+      "mode": {
+        "name": "Mode"
+      }
+    },
+    "binary_sensor": {
+      "charging": {
+        "name": "Charging"
+      }
+    }
+  }
+}

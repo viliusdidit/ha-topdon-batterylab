@@ -5,7 +5,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS, Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryError
 
 from .const import CONF_MODEL
 from .coordinator import TopdonCoordinator
@@ -23,7 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TopdonConfigEntry) -> bo
 
     profile = DEVICES.get(model)
     if profile is None:
-        raise ConfigEntryNotReady(f"unsupported model {model!r}")
+        raise ConfigEntryError(f"unsupported model {model!r}")
 
     coordinator = TopdonCoordinator(hass, address, profile)
     await coordinator.async_config_entry_first_refresh()

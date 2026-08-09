@@ -41,14 +41,12 @@ SENSORS: tuple[TopdonSensorDescription, ...] = (
         key="step",
         translation_key="charge_step",
         state_class=SensorStateClass.MEASUREMENT,
-        icon="mdi:stairs",
         value_fn=lambda s: s.step,
     ),
     TopdonSensorDescription(
         key="mode",
         translation_key="mode",
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:tune",
         value_fn=lambda s: s.mode,
     ),
 )

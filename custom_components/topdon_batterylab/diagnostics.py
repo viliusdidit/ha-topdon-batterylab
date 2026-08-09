@@ -1,4 +1,4 @@
-"""Diagnostics for the TB6000Pro."""
+"""Diagnostics for TOPDON BatteryLab devices."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from . import TB6000ConfigEntry
+from . import TopdonConfigEntry
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: TB6000ConfigEntry
+    hass: HomeAssistant, entry: TopdonConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data
