@@ -74,7 +74,17 @@ subscribes and writes a poll frame.
 
 ## Installation
 
-**HACS:** add this repository as a custom repository (type: Integration), install, restart.
+**HACS, one click:**
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=viliusdidit&repository=ha-topdon-batterylab&category=integration)
+
+That adds this repository to HACS as a custom repository and opens its page — then
+Download, and restart Home Assistant. Requires the
+[My Home Assistant](https://my.home-assistant.io/) redirects to be working on your
+instance; if the link does nothing, use the manual route below.
+
+**HACS, by hand:** HACS → ⋮ → Custom repositories → paste this repository's URL, type
+Integration → Add → Download → restart.
 
 **Manual:** copy `custom_components/topdon_batterylab` into your `config/custom_components/`,
 restart.
