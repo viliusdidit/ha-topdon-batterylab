@@ -35,13 +35,26 @@ alternating steps 8/9, which is float maintenance rather than active charging.
 
 ## Why read-only
 
-Writing works — `BF05` + `BF04` + `BF0B` reliably starts a charge, and it is documented
-in [docs/PROTOCOL.md](docs/PROTOCOL.md). It is deliberately **not exposed** here:
-`BF05 SET_CHARGING_MODE` is required to start a charge but does **not** appear to select
-the charging profile. Modes 2–6 were all accepted, all landed in the mode register, and
-none changed the LCD or the actual charging behaviour. Until that is understood, mode
-control would be a button that lies about what it does — on a device connected to a lead
-acid battery.
+The write path works well enough to be dangerous, not well enough to expose.
+`BF05` + `BF04` + `BF0B` did start a charge in testing — one session, measured — and the
+sequence is documented in [docs/PROTOCOL.md](docs/PROTOCOL.md). It is deliberately **not**
+wired up here, for two independent reasons.
+
+**1. Stopping is unverified.** `BF0C SET_END_CHARGING` returns an ACK, but the one status
+byte thought to track session state (`BF00[11]`) did **not** return to its idle value
+afterwards, so the ACK is not evidence the charge actually ended. Nothing else in the
+`BF00` payload has been confirmed to report "charging stopped" either. Exposing a start
+control whose matching stop cannot be confirmed — on mains-powered charging hardware
+clamped to a lead acid battery — is not a trade worth making for convenience. This is the
+blocking reason, and it is **not** fixed by simply omitting mode selection.
+
+**2. Mode selection is cosmetic.** `BF05 SET_CHARGING_MODE` is required before `BF0B` will
+start anything, but does not appear to select the charging profile. Modes 2–6 were all
+accepted and all landed in the mode register, yet none changed the LCD or the observed
+charging behaviour; the front-panel MODE button appears to stay authoritative. A mode
+control here would be a button that lies about what it does.
+
+Both need to be resolved on hardware before any control is added. Reason 1 first.
 
 **Recommended pairing:** put the charger's mains supply on a smart plug with power
 metering (a Shelly 1PM Pro, for example). That gives reliable on/off control and real
@@ -50,7 +63,8 @@ write path currently offers.
 
 ## Requirements
 
-- Home Assistant 2024.12 or newer
+- Home Assistant 2024.12 or newer (2026.3.0 or newer for the brand icon and logo, which
+  are served from this repository's `brand/` folder — everything else works from 2024.12)
 - A Bluetooth adapter **or an ESPHome Bluetooth proxy with `active: true`** within range
 
 Range is the practical constraint. The TB6000Pro is short-range — around -35 dBm standing

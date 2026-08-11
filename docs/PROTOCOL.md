@@ -87,6 +87,15 @@ ignored because there is no committed mode to start. Working sequence:
 ```
 Charging begins within seconds. `BF0B` returns `st=0x00` once a mode is committed and
 a session can start; its earlier silence was a rejection, not a missing reply.
+Observed on one session (2026-08-07): a flat AGM went from 11.5 V to full overnight.
+Not yet repeated, so treat "reliable" as unestablished.
+
+🛑 **Stopping is NOT verified — do not build a control on this without settling it first.**
+`BF0C SET_END_CHARGING` ACKs, but `BF00[11]` did not return to its pre-charge value
+afterwards and no other payload byte has been confirmed to report "session ended". The
+ACK therefore proves the frame was accepted, **not** that charging stopped. Anyone wiring
+up `BF0B` needs a confirmed stop path — verify against the LCD and a clamp meter, not
+against the ACK.
 
 ⚠ **`BF05` is required to start, but does not appear to select the profile.** Writing
 modes 2–6 is always acked and always lands in `BF00[12]`, yet the LCD keeps showing the
@@ -172,13 +181,20 @@ Design implication for any HA integration: connect while the charger is idle and
 *hold* the connection for the whole session. A poll-on-demand design will not work —
 by the time there is something interesting to read, the device is unreachable.
 
-## Write path — partially verified (2026-08-06)
+## Write path — first pass (2026-08-06) ⚠ PARTLY SUPERSEDED
+
+> **The `BF0B` row below is superseded** by
+> [Starting a charge over BLE — SOLVED (2026-08-07)](#starting-a-charge-over-ble--solved-2026-08-07).
+> `BF0B` is not unconditionally ignored: it is rejected in silence only while no mode has
+> been committed, and returns `st=0x00` once `BF05` has run first. This section is kept
+> because the `BF04` and `BF10` findings still stand and the silence itself is a useful
+> diagnostic signature.
 
 | Command | Frame | Result |
 |---|---|---|
 | `BF04 SET_FUNCTION_MODE(1)` | `55 AA 00 08 FF F7 BF 04 01 BA` | **ACK `st=0x00`**, and `BF00[21]` flips `0x00`→`0x01`. Works. |
 | `BF10 SET_TIME` | `55 AA 00 0D FF F2 BF 10 <epoch BE4> 00 78 <xor>` | ACK `st=0x00`, but `BF08 GET_TIME` still returns all zeros — payload format likely wrong. |
-| `BF0B SET_START_CHARGE` | `55 AA 00 09 FF F6 BF 0B 01 01 B4` | **No response at all.** Ignored. Also ignored with no args. |
+| `BF0B SET_START_CHARGE` | `55 AA 00 09 FF F6 BF 0B 01 01 B4` | ⚠ *superseded — see above.* **No response at all** at the time of this capture, with or without args, because no mode had been committed. |
 
 `BF04` ACKing proves the framing/XOR is correct on the write path — so `BF0B`'s silence
 is a rejection by the firmware, not a malformed frame. Payload is `{0x01, <function
