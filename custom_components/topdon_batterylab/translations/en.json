@@ -21,12 +21,45 @@
   },
   "entity": {
     "sensor": {
-      "battery_voltage": { "name": "Battery voltage" },
-      "charge_step": { "name": "Charge step" },
-      "mode": { "name": "Mode" }
+      "battery_voltage": {
+        "name": "Battery voltage"
+      },
+      "charge_step": {
+        "name": "Charge step"
+      },
+      "mode": {
+        "name": "Mode"
+      }
     },
     "binary_sensor": {
-      "charging": { "name": "Charging" }
+      "charging": {
+        "name": "Charging"
+      }
+    },
+    "button": {
+      "start_charge": {
+        "name": "Start charge"
+      }
+    }
+  },
+  "services": {
+    "exchange": {
+      "name": "Exchange raw frames",
+      "description": "Write one or more raw TOPDON commands and return every notification heard afterwards. Protocol-exploration tool: the reply does not have to decode, so it works on opcodes whose payload layout is not known yet.",
+      "fields": {
+        "commands": {
+          "name": "Commands",
+          "description": "Hex commands, first two bytes are the opcode, the rest are arguments. Framing and checksum are added automatically."
+        },
+        "listen": {
+          "name": "Listen seconds",
+          "description": "How long to keep collecting notifications after the last write."
+        },
+        "gap": {
+          "name": "Gap seconds",
+          "description": "Delay between consecutive commands."
+        }
+      }
     }
   }
 }
