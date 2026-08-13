@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Sequence
 
 from bleak import BleakClient
@@ -27,7 +28,13 @@ from homeassistant.components import bluetooth
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, KEEPALIVE, NOTIFY_TIMEOUT, UPDATE_INTERVAL
+from .const import (
+    DOMAIN,
+    KEEPALIVE,
+    NOTIFY_TIMEOUT,
+    RECONNECT_INTERVAL,
+    UPDATE_INTERVAL,
+)
 from .devices import DeviceProfile, DeviceState, decode
 from .protocol import CHAR_UUIDS
 
@@ -66,6 +73,8 @@ class TopdonCoordinator(DataUpdateCoordinator[DeviceState]):
         self._pending: asyncio.Future[DeviceState] | None = None
         # Collects every raw notification while a capture is in progress.
         self._capture: list[str] | None = None
+        # When the currently held link was opened (monotonic), for RECONNECT_INTERVAL.
+        self._link_opened: float | None = None
 
     # --- link management -----------------------------------------------------
 
@@ -99,8 +108,33 @@ class TopdonCoordinator(DataUpdateCoordinator[DeviceState]):
             # it rather than throw it away.
             self.async_set_updated_data(state)
 
+    def _log_chosen_path(self) -> None:
+        """Log which scanner won, so a bad path choice is visible in the log."""
+        try:
+            found = bluetooth.async_scanner_devices_by_address(
+                self.hass, self.address, connectable=True
+            )
+        except Exception:  # noqa: BLE001 - diagnostics only, never break a connect
+            return
+        if not found:
+            return
+        ranked = sorted(
+            found, key=lambda d: d.advertisement.rssi or -127, reverse=True
+        )
+        _LOGGER.debug(
+            "%s: connecting via %s at %s dBm (candidates: %s)",
+            self.address,
+            ranked[0].scanner.name if ranked[0].scanner else "?",
+            ranked[0].advertisement.rssi,
+            ", ".join(
+                f"{d.scanner.name if d.scanner else '?'}={d.advertisement.rssi}"
+                for d in ranked
+            ),
+        )
+
     async def _connect(self) -> BleakClient:
         """Open a link and subscribe to notifications."""
+        self._log_chosen_path()
         device = self._ble_device()
         try:
             client = await establish_connection(
@@ -118,6 +152,7 @@ class TopdonCoordinator(DataUpdateCoordinator[DeviceState]):
         await client.start_notify(char, self._handle_notify)
         self._client = client
         self._char = char
+        self._link_opened = time.monotonic()
         return client
 
     async def _ensure_link(self) -> BleakClient:
@@ -129,6 +164,7 @@ class TopdonCoordinator(DataUpdateCoordinator[DeviceState]):
     async def _release(self) -> None:
         """Drop the held link, ignoring errors from an already-dead socket."""
         client, self._client, self._char = self._client, None, None
+        self._link_opened = None
         if client is None:
             return
         try:
@@ -169,6 +205,14 @@ class TopdonCoordinator(DataUpdateCoordinator[DeviceState]):
         finally:
             self._pending = None
 
+    def _link_is_stale(self) -> bool:
+        """True when the held link has been up long enough to re-pick a path."""
+        if not KEEPALIVE or self._link_opened is None:
+            return False
+        return (
+            time.monotonic() - self._link_opened
+        ) >= RECONNECT_INTERVAL.total_seconds()
+
     async def _async_update_data(self) -> DeviceState:
         async with self._conn_lock:
             await self._ensure_link()
@@ -176,6 +220,16 @@ class TopdonCoordinator(DataUpdateCoordinator[DeviceState]):
                 return await self._request()
             finally:
                 if not KEEPALIVE:
+                    await self._release()
+                elif self._link_is_stale():
+                    # Drop it AFTER a successful poll, not before: the device then
+                    # advertises for a full update interval, so every scanner hears
+                    # it and the next connect can choose the closest one.
+                    _LOGGER.debug(
+                        "%s: dropping held link after %s to re-evaluate BLE path",
+                        self.address,
+                        RECONNECT_INTERVAL,
+                    )
                     await self._release()
 
     async def async_send_command(

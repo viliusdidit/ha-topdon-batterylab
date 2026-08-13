@@ -27,5 +27,20 @@ KEEPALIVE = True
 # doubles as the link keepalive - traffic every interval on the held link.
 UPDATE_INTERVAL = timedelta(seconds=60)
 
+# How long to hold one link before deliberately dropping it (KEEPALIVE only).
+#
+# A connected BLE device stops advertising. While the link is held the device is
+# therefore invisible to every OTHER scanner, so Home Assistant can never
+# re-evaluate which radio is closest: whichever proxy happened to be nearest at
+# connect time stays chosen forever, even after the hardware physically moves.
+# Observed for real - a charger was held over a proxy at -98 dBm while a proxy
+# at -74 dBm sat unused three metres away, because it could not see the device
+# to be considered.
+#
+# Dropping the link lets the device advertise for one update interval, which is
+# long enough for every scanner to hear it, so the next connect picks the best
+# path. Costs one extra connect per interval below.
+RECONNECT_INTERVAL = timedelta(minutes=30)
+
 # Time to wait for the poll response after writing the request.
 NOTIFY_TIMEOUT = 10.0
